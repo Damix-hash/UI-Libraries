@@ -639,3 +639,5 @@ function pupware:CreateWindow(title, key, parent)
 
     return window
 end
+
+return pupware
