@@ -752,13 +752,15 @@ function pupware:CreateWindow(title, parent)
 		local section = {}
 
 		function section:AddButton(btnName, callback)
-			local btn = ButtonTemplate:Clone()
-			btn.Name = btnName:upper()
-			btn.Text = btnName:upper()
-			btn.Parent = Section
-			btn.Visible = true
-			btn.MouseButton1Click:Connect(callback)
-			return btn
+		    local btn = ButtonTemplate:Clone()
+		    btn.Name = btnName:upper()
+		    btn.Text = btnName:upper()
+		    btn.Parent = Section
+		    btn.Visible = true
+		    btn.MouseButton1Click:Connect(function()
+		        task.spawn(callback)
+		    end)
+		    return btn
 		end
 
 		function section:AddToggle(btnName, callback)
