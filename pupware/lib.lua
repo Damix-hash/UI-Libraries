@@ -378,212 +378,264 @@ SliderValue.TextSize = 14
 
 -- Library
 
-function pupware:CreateWindow(title, parent)
-	if parent then
-		ScreenGui.Parent = parent
-	else
-		local success = pcall(function()
-			ScreenGui.Parent = game:GetService("CoreGui")
-		end)
-		if not success or ScreenGui.Parent == nil then
-			ScreenGui.Parent = playerGui
-		end
-	end
-	ScreenGui.Enabled = true
-	GuiName.Text = "pupware"
-	GuiVersion.Text = title or ""
+function pupware:CreateWindow(title, key, parent)
+    if parent then
+        ScreenGui.Parent = parent
+    else
+        local success = pcall(function()
+            ScreenGui.Parent = game:GetService("CoreGui")
+        end)
+        if not success or ScreenGui.Parent == nil then
+            ScreenGui.Parent = playerGui
+        end
+    end
+    ScreenGui.Enabled = true
+    GuiName.Text = "pupware"
+    GuiVersion.Text = title or ""
+    key = key or Enum.KeyCode.RightShift
 
-	local window = {}
-	local activeTab = nil
-	local currentSection = nil
-	local TOGGLE_OFF = Color3.new(0.431372, 0.105882, 0.168627)
-	local TOGGLE_ON = Color3.new(0.105882, 0.227451, 0.149020)
-	local ACTIVE_OFF = Color3.new(0.101961, 0.101961, 0.101961)
-	local ACTIVE_ON = Color3.new(0.160784, 0.160784, 0.160784)
+    -- blur
+    local blur = Instance.new("BlurEffect")
+    blur.Parent = game:GetService("Lighting")
+    blur.Size = 0
 
-	local dragging = false
-	local dragStart, startPos
+    -- pop in tween
+    local originalSize = Main.Size
+    local originalPos = Main.Position
 
-	Header.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = Main.Position
-		end
-	end)
+    local function showGui()
+        ScreenGui.Enabled = true
+        Main.Size = UDim2.new(0, 0, 0, 0)
+        Main.Position = UDim2.new(
+            originalPos.X.Scale, originalPos.X.Offset,
+            originalPos.Y.Scale + 0.02, originalPos.Y.Offset
+        )
+        TweenService:Create(Main, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = originalSize,
+            Position = originalPos
+        }):Play()
+        TweenService:Create(blur, TweenInfo.new(0.25), {Size = 10}):Play()
+    end
 
-	Header.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = false
-		end
-	end)
+    local function hideGui()
+        TweenService:Create(Main, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(
+                originalPos.X.Scale, originalPos.X.Offset,
+                originalPos.Y.Scale + 0.02, originalPos.Y.Offset
+            )
+        }):Play()
+        TweenService:Create(blur, TweenInfo.new(0.2), {Size = 0}):Play()
+        task.delay(0.2, function()
+            ScreenGui.Enabled = false
+        end)
+    end
 
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			local delta = input.Position - dragStart
-			Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
+    -- show on startup
+    showGui()
 
-		if input.UserInputType == Enum.UserInputType.MouseWheel and currentSection then
-			local section = Body:FindFirstChild(currentSection)
-			if section and section:IsA("ScrollingFrame") then
-				section.CanvasPosition = Vector2.new(0,
-					math.clamp(section.CanvasPosition.Y - (input.Position.Z * 40), 0, section.AbsoluteCanvasSize.Y)
-				)
-			end
-		end
-	end)
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == key then
+            if ScreenGui.Enabled then
+                hideGui()
+            else
+                showGui()
+            end
+        end
+    end)
 
-	local function showSection(name)
-		currentSection = name:upper()
-		for _, sc in ipairs(Body:GetChildren()) do
-			sc.Visible = sc.Name:upper() == currentSection
-		end
-	end
+    local window = {}
+    local activeTab = nil
+    local currentSection = nil
+    local TOGGLE_OFF = Color3.new(0.431372, 0.105882, 0.168627)
+    local TOGGLE_ON = Color3.new(0.105882, 0.227451, 0.149020)
+    local ACTIVE_OFF = Color3.new(0.101961, 0.101961, 0.101961)
+    local ACTIVE_ON = Color3.new(0.160784, 0.160784, 0.160784)
 
-	local function updateTab(name)
-		if activeTab then activeTab.BackgroundColor3 = ACTIVE_OFF end
-		activeTab = PageHolder:FindFirstChild(name:upper())
-		if activeTab then activeTab.BackgroundColor3 = ACTIVE_ON end
-	end
+    local dragging = false
+    local dragStart, startPos
 
-	function window:CreateSection(layoutType, name)
-		local template = Pages:FindFirstChild(layoutType)
-		if not template then return end
+    Header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+        end
+    end)
 
-		local Section = template:Clone()
-		Section.Name = name:upper()
-		Section.Parent = Body
-		Section.Visible = false
-		Section.Active = true
+    Header.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
 
-		local tabBtn = ButtonTemplate:Clone()
-		tabBtn.Name = name:upper()
-		tabBtn.Text = name:upper()
-		tabBtn.Parent = PageHolder
-		tabBtn.Visible = true
-		tabBtn.MouseButton1Click:Connect(function()
-			updateTab(name)
-			showSection(name)
-		end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            Main.Position = newPos
+            originalPos = newPos -- update so hide/show tweens use correct position
+        end
 
-		local section = {}
+        if input.UserInputType == Enum.UserInputType.MouseWheel and currentSection then
+            local section = Body:FindFirstChild(currentSection)
+            if section and section:IsA("ScrollingFrame") then
+                section.CanvasPosition = Vector2.new(0,
+                    math.clamp(section.CanvasPosition.Y - (input.Position.Z * 40), 0, section.AbsoluteCanvasSize.Y)
+                )
+            end
+        end
+    end)
 
-		function section:AddButton(btnName, callback)
-			local btn = ButtonTemplate:Clone()
-			btn.Name = btnName:upper()
-			btn.Text = btnName:upper()
-			btn.Parent = Section
-			btn.Visible = true
-			btn.MouseButton1Click:Connect(callback)
-			return btn
-		end
+    local function showSection(name)
+        currentSection = name:upper()
+        for _, sc in ipairs(Body:GetChildren()) do
+            sc.Visible = sc.Name:upper() == currentSection
+        end
+    end
 
-		function section:AddToggle(btnName, callback)
-			local didToggle = false
-			local debounce = false
-			local toggle = ToggleTemplate:Clone()
-			toggle.Name = btnName:upper()
-			toggle.Text = btnName:upper()
-			toggle.Parent = Section
-			toggle.Visible = true
-			toggle.MouseButton1Click:Connect(function()
-				if debounce then return end
-				debounce = true
-				didToggle = not didToggle
-				if didToggle then
-					toggle.BackgroundColor3 = TOGGLE_ON
-					task.spawn(function()
-						while didToggle do callback() task.wait() end
-					end)
-				else
-					toggle.BackgroundColor3 = TOGGLE_OFF
-				end
-				debounce = false
-			end)
-			return toggle
-		end
+    local function updateTab(name)
+        if activeTab then activeTab.BackgroundColor3 = ACTIVE_OFF end
+        activeTab = PageHolder:FindFirstChild(name:upper())
+        if activeTab then activeTab.BackgroundColor3 = ACTIVE_ON end
+    end
 
-		function section:AddLabel(text)
-			local label = LabelTemplate:Clone()
-			label.Name = text:upper()
-			label.Text = text:upper()
-			label.Parent = Section
-			label.Visible = true
-			return label
-		end
+    function window:CreateSection(layoutType, name)
+        local template = Pages:FindFirstChild(layoutType)
+        if not template then return end
 
-		function section:AddInput(labelText, placeholder)
-			local holder = InputTemplate:Clone()
-			holder:FindFirstChild("Label").Text = labelText:upper()
-			holder:FindFirstChild("Input").PlaceholderText = (placeholder or ""):upper()
-			holder.Parent = Section
-			holder.Visible = true
-			return holder, holder:FindFirstChild("Input")
-		end
+        local Section = template:Clone()
+        Section.Name = name:upper()
+        Section.Parent = Body
+        Section.Visible = false
+        Section.Active = true
 
-		function section:AddNumberInput(labelText)
-			local holder = NumberTemplate:Clone()
-			holder:FindFirstChild("Label").Text = labelText:upper()
-			local input = holder:FindFirstChild("Input")
-			input.PlaceholderText = "0"
-			holder.Parent = Section
-			holder.Visible = true
-			input:GetPropertyChangedSignal("Text"):Connect(function()
-				input.Text = input.Text:gsub("%D", "")
-			end)
-			return holder, input
-		end
+        local tabBtn = ButtonTemplate:Clone()
+        tabBtn.Name = name:upper()
+        tabBtn.Text = name:upper()
+        tabBtn.Parent = PageHolder
+        tabBtn.Visible = true
+        tabBtn.MouseButton1Click:Connect(function()
+            updateTab(name)
+            showSection(name)
+        end)
 
-		function section:AddSlider(labelText, min, max, default, callback)
-			local holder = SliderTemplate:Clone()
-			local bg = holder:FindFirstChild("SliderBackground")
-			local drag = bg:FindFirstChild("SliderDrag")
-			local valueLabel = bg:FindFirstChild("Value")
-			holder:FindFirstChild("Label").Text = labelText:upper()
-			holder.Parent = Section
-			holder.Visible = true
+        local section = {}
 
-			local sliderDragging = false
-			local currentValue = default or min
+        function section:AddButton(btnName, callback)
+            local btn = ButtonTemplate:Clone()
+            btn.Name = btnName:upper()
+            btn.Text = btnName:upper()
+            btn.Parent = Section
+            btn.Visible = true
+            btn.MouseButton1Click:Connect(callback)
+            return btn
+        end
 
-			local function updateSlider(val)
-				currentValue = math.clamp(math.round(val), min, max)
-				local fraction = (currentValue - min) / (max - min)
-				TweenService:Create(drag, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
-					Position = UDim2.new(fraction, -drag.AbsoluteSize.X / 2, drag.Position.Y.Scale, drag.Position.Y.Offset)
-				}):Play()
-				valueLabel.Text = tostring(currentValue)
-				callback(currentValue)
-			end
+        function section:AddToggle(btnName, callback)
+            local didToggle = false
+            local debounce = false
+            local toggle = ToggleTemplate:Clone()
+            toggle.Name = btnName:upper()
+            toggle.Text = btnName:upper()
+            toggle.Parent = Section
+            toggle.Visible = true
+            toggle.MouseButton1Click:Connect(function()
+                if debounce then return end
+                debounce = true
+                didToggle = not didToggle
+                if didToggle then
+                    toggle.BackgroundColor3 = TOGGLE_ON
+                    task.spawn(function()
+                        while didToggle do callback() task.wait() end
+                    end)
+                else
+                    toggle.BackgroundColor3 = TOGGLE_OFF
+                end
+                debounce = false
+            end)
+            return toggle
+        end
 
-			drag.InputBegan:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseButton1 then sliderDragging = true end
-			end)
-			drag.InputEnded:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseButton1 then sliderDragging = false end
-			end)
-			UserInputService.InputChanged:Connect(function(input)
-				if sliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-					local fraction = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
-					updateSlider(min + (max - min) * fraction)
-				end
-			end)
+        function section:AddLabel(text)
+            local label = LabelTemplate:Clone()
+            label.Name = text:upper()
+            label.Text = text:upper()
+            label.Parent = Section
+            label.Visible = true
+            return label
+        end
 
-			task.wait()
-			updateSlider(currentValue)
-			return holder, valueLabel
-		end
+        function section:AddInput(labelText, placeholder)
+            local holder = InputTemplate:Clone()
+            holder:FindFirstChild("Label").Text = labelText:upper()
+            holder:FindFirstChild("Input").PlaceholderText = (placeholder or ""):upper()
+            holder.Parent = Section
+            holder.Visible = true
+            return holder, holder:FindFirstChild("Input")
+        end
 
-		if not currentSection then
-			showSection(name)
-			updateTab(name)
-		end
+        function section:AddNumberInput(labelText)
+            local holder = NumberTemplate:Clone()
+            holder:FindFirstChild("Label").Text = labelText:upper()
+            local input = holder:FindFirstChild("Input")
+            input.PlaceholderText = "0"
+            holder.Parent = Section
+            holder.Visible = true
+            input:GetPropertyChangedSignal("Text"):Connect(function()
+                input.Text = input.Text:gsub("%D", "")
+            end)
+            return holder, input
+        end
 
-		return section
-	end
+        function section:AddSlider(labelText, min, max, default, callback)
+            local holder = SliderTemplate:Clone()
+            local bg = holder:FindFirstChild("SliderBackground")
+            local drag = bg:FindFirstChild("SliderDrag")
+            local valueLabel = bg:FindFirstChild("Value")
+            holder:FindFirstChild("Label").Text = labelText:upper()
+            holder.Parent = Section
+            holder.Visible = true
 
-	return window
+            local sliderDragging = false
+            local currentValue = default or min
+
+            local function updateSlider(val)
+                currentValue = math.clamp(math.round(val), min, max)
+                local fraction = (currentValue - min) / (max - min)
+                TweenService:Create(drag, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
+                    Position = UDim2.new(fraction, -drag.AbsoluteSize.X / 2, drag.Position.Y.Scale, drag.Position.Y.Offset)
+                }):Play()
+                valueLabel.Text = tostring(currentValue)
+                callback(currentValue)
+            end
+
+            drag.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then sliderDragging = true end
+            end)
+            drag.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then sliderDragging = false end
+            end)
+            UserInputService.InputChanged:Connect(function(input)
+                if sliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    local fraction = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+                    updateSlider(min + (max - min) * fraction)
+                end
+            end)
+
+            task.wait()
+            updateSlider(currentValue)
+            return holder, valueLabel
+        end
+
+        if not currentSection then
+            showSection(name)
+            updateTab(name)
+        end
+
+        return section
+    end
+
+    return window
 end
-
-return pupware
