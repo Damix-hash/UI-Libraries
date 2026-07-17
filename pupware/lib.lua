@@ -13,7 +13,7 @@ ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local Main = Instance.new("Frame")
 Main.Parent = ScreenGui
 Main.LayoutOrder = 0
-Main.Active = true
+Main.Active = false
 Main.Interactable = true
 Main.AnchorPoint = Vector2.new(0, 0)
 Main.Rotation = 0
@@ -38,7 +38,7 @@ UISizeConstraint.MinSize = Vector2.new(280, 200)
 local Header = Instance.new("Frame")
 Header.Parent = Main
 Header.LayoutOrder = 0
-Header.Active = true
+Header.Active = false
 Header.Interactable = true
 Header.AnchorPoint = Vector2.new(0, 0)
 Header.Rotation = 0
@@ -102,7 +102,7 @@ GuiVersion.TextXAlignment = Enum.TextXAlignment.Right
 local Sidebar = Instance.new("Frame")
 Sidebar.Parent = Main
 Sidebar.LayoutOrder = 0
-Sidebar.Active = true
+Sidebar.Active = false
 Sidebar.Interactable = true
 Sidebar.AnchorPoint = Vector2.new(0, 0)
 Sidebar.Rotation = 0
@@ -292,7 +292,7 @@ UIPadding2.PaddingTop = UDim.new(0, 4)
 local FullPage = Instance.new("Frame")
 FullPage.Parent = Pages
 FullPage.LayoutOrder = 0
-FullPage.Active = true
+FullPage.Active = false
 FullPage.Interactable = true
 FullPage.AnchorPoint = Vector2.new(0, 0)
 FullPage.Rotation = 0
@@ -593,7 +593,7 @@ UIPadding10.PaddingLeft = UDim.new(0, 6)
 local SliderBackground = Instance.new("Frame")
 SliderBackground.Parent = SliderTemplate
 SliderBackground.LayoutOrder = 0
-SliderBackground.Active = true
+SliderBackground.Active = false
 SliderBackground.Interactable = true
 SliderBackground.AnchorPoint = Vector2.new(0, 0)
 SliderBackground.Rotation = 0
@@ -803,6 +803,7 @@ function pupware:CreateWindow(title, key, parent)
         end)
 
         local section = {}
+        local sectionBtnDebounce = false
 
         function section:AddButton(btnName, callback)
             local btn = ButtonTemplate:Clone()
@@ -811,7 +812,10 @@ function pupware:CreateWindow(title, key, parent)
             btn.Parent = Section
             btn.Visible = true
             btn.MouseButton1Click:Connect(function()
+                if sectionBtnDebounce then return end
+                sectionBtnDebounce = true
                 task.spawn(callback)
+                sectionBtnDebounce = false
             end)
             return btn
         end
